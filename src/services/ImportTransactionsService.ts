@@ -2,24 +2,18 @@ import fs from 'fs';
 import neatCsv from 'neat-csv';
 
 import AppError from '../errors/AppError';
+import Transaction from '../models/Transaction';
 
 interface Request {
   csvPath: string;
 }
 
-interface ImportedTransaction {
-  title: string;
-  type: 'income' | 'outcome';
-  value: number;
-  category: string;
-}
-
 class ImportTransactionsService {
-  async execute({ csvPath }: Request): Promise<ImportedTransaction[]> {
+  async execute({ csvPath }: Request): Promise<Transaction[]> {
     const content = fs.readFileSync(csvPath, 'utf8');
 
-    const transactions: ImportedTransaction[] = await neatCsv(content, {
-      headers: ['title', 'type', 'value', 'category'],
+    const transactions: Transaction[] = await neatCsv(content, {
+      headers: ['title', 'type', 'value', 'category_name'],
       mapValues: ({ header, value }) =>
         header === 'value' ? Number(value) : value.trim(),
       strict: true,

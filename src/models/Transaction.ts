@@ -24,6 +24,8 @@ class Transaction {
   @Column('numeric')
   value: number;
 
+  category_name: string;
+
   @Column()
   category_id: string;
 

@@ -77,17 +77,30 @@ transactionsRouter.post('/import', upload.single('file'), async (req, res) => {
     csvPath: req.file.path,
   });
 
+  const categories = Array.from(
+    new Set(importedTransactions.map(transaction => transaction.category_name)),
+  );
+
+  const categoriesIdPromises = await categories.map(async category => {
+    const newCategory = await createCategory.execute({
+      title: category,
+    });
+    return newCategory.id;
+  });
+
+  const categoriesId = await Promise.all(categoriesIdPromises);
+
   const transactionsPromise = importedTransactions.map(
     async (transaction): Promise<Transaction> => {
-      const newCategory = await createCategory.execute({
-        title: transaction.category,
-      });
+      const transactionCategoryId = categories.indexOf(
+        transaction.category_name,
+      );
 
       const newTransaction = await createTransaction.execute({
         title: transaction.title,
         value: transaction.value,
         type: transaction.type,
-        category: newCategory.id,
+        category: categoriesId[transactionCategoryId],
       });
 
       return newTransaction;
