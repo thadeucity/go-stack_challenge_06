@@ -73,43 +73,40 @@ transactionsRouter.post('/import', upload.single('file'), async (req, res) => {
   const createTransaction = new CreateTransactionService();
   const createCategory = new CreateCategoryService();
 
-  const importedTransactions = await importTransactions.execute({
+  const transactions = await importTransactions.execute({
     csvPath: req.file.path,
   });
 
-  const categories = Array.from(
-    new Set(importedTransactions.map(transaction => transaction.category_name)),
-  );
+  const transactionsPromises = transactions.reduce(
+    async (
+      transactionsList: Promise<Transaction[]>,
+      transaction: Transaction,
+    ): Promise<Transaction[]> => {
+      const { category_name, title, value, type } = transaction;
 
-  const categoriesIdPromises = await categories.map(async category => {
-    const newCategory = await createCategory.execute({
-      title: category,
-    });
-    return newCategory.id;
-  });
+      const acc = await Promise.resolve(transactionsList);
 
-  const categoriesId = await Promise.all(categoriesIdPromises);
-
-  const transactionsPromise = importedTransactions.map(
-    async (transaction): Promise<Transaction> => {
-      const transactionCategoryId = categories.indexOf(
-        transaction.category_name,
-      );
-
-      const newTransaction = await createTransaction.execute({
-        title: transaction.title,
-        value: transaction.value,
-        type: transaction.type,
-        category: categoriesId[transactionCategoryId],
+      const newCategory = await createCategory.execute({
+        title: category_name,
       });
 
-      return newTransaction;
+      const newTransaction = await createTransaction.execute({
+        title,
+        value,
+        type,
+        category: newCategory.id,
+      });
+
+      acc.push(newTransaction);
+
+      return Promise.resolve(acc);
     },
+    Promise.resolve([]),
   );
 
-  const transactions = await Promise.all(transactionsPromise);
+  const createdTransactions = await Promise.resolve(transactionsPromises);
 
-  return res.json(transactions);
+  return res.json(createdTransactions);
 });
 
 export default transactionsRouter;
